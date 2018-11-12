@@ -1,10 +1,17 @@
 import * as mongoose from 'mongoose';
 
-
 export class Connections {
     static main: mongoose.Connection;
 
-    static initialize(host: any) {
+    /**
+ * Crea una conexión a una base de datos mongodb
+ *
+ * @export
+ * @param {Strin} host Un connection string.
+ * @param {any} options un json con la opciones de conexión a la bd. 
+ * @returns {Promise<Document>}
+ */
+    static initialize(host: any, options: any) {
         mongoose.connect(host);
         this.main = mongoose.connection;
         // Configura eventos
