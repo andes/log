@@ -13,25 +13,25 @@ import { model, schema } from '../schema/log';
  * @param {*} [anterior] Datos anterior de la operación
  * @returns {Promise<Document>}
  */
-export function log(req: Request, key: String, paciente: String, operacion: String, valor: any, anterior?: any): Promise<Document> {
+export function log(req: any, key: String, paciente: String, operacion: String, valor: any, anterior?: any): Promise<Document> {
     let data = new model({
         key,
         paciente,
         operacion,
         fecha: new Date(),
-        usuario: (req as any).user.usuario,
-        app: (req as any).user.app,
-        organizacion: (req as any).user.organizacion,
+        usuario: 'Lalalal', // (req as any).user.usuario,
+        app: 'mi app', // (req as any).user.app,
+        organizacion: 'mi org', // (req as any).user.organizacion,
         data: anterior || valor ? {
             anterior,
             valor,
         } : null,
         cliente: {
-            ip: (req as any).ip,
-            userAgent: (req as any).useragent
+            ip: 'mi ip', // (req as any).ip,
+            userAgent: 'mi agente', // (req as any).useragent
         },
         servidor: {
-            ip: (req as any).connection.localAddress
+            ip: 'mi local'// (req as any).connection.localAddress
         }
     });
     return data.save();
