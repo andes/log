@@ -10,6 +10,6 @@
   "confirm": true,
   "publishCommand": "npm publish --access=public",
   "publishTag": "latest",
-  "prePublishScript": false,
+  "prePublishScript": "npm run prepublish",
   "postPublishScript": false
 }
