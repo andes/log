@@ -8,7 +8,7 @@
     "gitTag": true
   },
   "confirm": true,
-  "publishCommand": "npm publish",
+  "publishCommand": "npm publish --access=public",
   "publishTag": "latest",
   "prePublishScript": false,
   "postPublishScript": false
