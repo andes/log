@@ -8,7 +8,7 @@ export let schema = new mongoose.Schema({
         }
     },
     paciente: {
-        type: mongoose.Schema.Types.Mixed, // mongoose.Schema.Types.ObjectId,
+        type: mongoose.Schema.Types.Mixed,
         required: () => {
             return !this.key;
         }
@@ -21,9 +21,9 @@ export let schema = new mongoose.Schema({
         type: String,
         required: true
     },
-    usuario: mongoose.Schema.Types.Mixed,       //  = Se copia idéntico desde el token
-    app: mongoose.Schema.Types.Mixed,           //  = Se copia idéntico desde el token
-    organizacion: mongoose.Schema.Types.Mixed,  //  = Se copia idéntico desde el token
+    usuario: mongoose.Schema.Types.Mixed,
+    app: mongoose.Schema.Types.Mixed,
+    organizacion: mongoose.Schema.Types.Mixed,
     data: {
         anterior: mongoose.Schema.Types.Mixed,
         valor: mongoose.Schema.Types.Mixed,
