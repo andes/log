@@ -1,6 +1,6 @@
 {
   "name": "@andes/log",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andes/log.git"
@@ -16,6 +16,7 @@
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
+  "main": "./dist/index.js",
   "dependencies": {
     "mongoose": "^5.3.11",
     "url-parse": "^1.1.9",
