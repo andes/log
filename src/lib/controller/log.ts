@@ -1,6 +1,6 @@
 import { Document } from 'mongoose';
 import { model, schema } from '../schema/log';
-
+import { IRequest } from '../interfaces/log';
 /**
  * Crea un log en la base de datos
  *
@@ -13,25 +13,25 @@ import { model, schema } from '../schema/log';
  * @param {*} [anterior] Datos anterior de la operación
  * @returns {Promise<Document>}
  */
-export function log(req: any, key: String, paciente: any, operacion: String, valor: any, anterior?: any): Promise<Document> {
+export function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any): Promise<Document> {
     let data = new model({
         key,
         paciente,
         operacion,
         fecha: new Date(),
-        usuario: (req as any).user.usuario,
-        app: (req as any).user.app,
-        organizacion: (req as any).user.organizacion,
+        usuario: req.user && req.user.usuario,
+        app: req.user && req.user.app,
+        organizacion: req.user && req.user.organizacion,
         data: anterior || valor ? {
             anterior,
             valor,
         } : null,
         cliente: {
-            ip: (req as any).ip,
-            userAgent: (req as any).useragent
+            ip: req.ip,
+            userAgent: req.useragent
         },
         servidor: {
-            ip: (req as any).connection.localAddress
+            ip: req.connection && req.connection.localAddress
         }
     });
     return data.save();

@@ -9,14 +9,14 @@ async function prueba() {
     }
     try {
         Connections.initialize(host, options);
-
+        let key = 'microservice:hostias:tio';
         let paciente = {
             nombre: 'Juan',
             apellido: 'Perez',
             fechaNacimiento: '01-01-1900',
             sexo: 'Masculino',
             activo: true
-        }
+        };
         let fakeRequest = {
             user: {
                 usuario: '777777777',
@@ -27,9 +27,7 @@ async function prueba() {
                     direccion: 'Los alerces 1234'
                 }
             },
-            connection: {
-                localAddress: '127.0.0.1'
-            },
+
             ip: '192.168.1.1',
             useragent: {
                 isMobile: false,
@@ -43,7 +41,7 @@ async function prueba() {
             }
         };
         // No me cuadra q un argumento sea un paciente, no queda genérico
-        await log(fakeRequest, 'microservice:hostias:tio', paciente, 'guardar', 'xx', 'yy')
+        await log(fakeRequest, key, paciente, 'guardar', 'xx', 'yy')
 
     } catch (err) {
         console.log(err);
