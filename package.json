@@ -1,6 +1,6 @@
 {
   "name": "@andes/log",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andes/log.git"
@@ -12,6 +12,7 @@
     "start": "node index.js",
     "tsc": "./node_modules/typescript/bin/tsc",
     "tsc:w": "./node_modules/typescript/bin/tsc -w",
+    "prepublish": "tsc -p ./ --outDir dist/",
     "publish-please": "publish-please",
     "prepublishOnly": "publish-please guard"
   },
