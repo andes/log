@@ -1,4 +1,5 @@
 import * as mongoose from 'mongoose';
+import { throws } from 'assert';
 
 export class Connections {
     static main: mongoose.Connection;
@@ -11,19 +12,13 @@ export class Connections {
  * @param {any} options un json con la opciones de conexión a la bd. 
  * @returns {Promise<Document>}
  */
-    static initialize(host: any, options: any) {
-        mongoose.connect(host);
-        this.main = mongoose.connection;
-        // Configura eventos
-        this.configEvents('main', this.main);
+    static async initialize(host: any, options: any) {
+        try {
+            mongoose.set('useCreateIndex', true);
+            await mongoose.connect(host, { useNewUrlParser: true }, options);
+            this.main = mongoose.connection;
+        } catch (error) {
+            throw error;
+        }
     }
-
-    private static configEvents(name: string, connection: mongoose.Connection) {
-        connection.on('connecting', () => console.log('connecting...'));
-        connection.on('error', (error) => console.log('error'));
-        connection.on('connected', () => console.log('conectado'));
-        connection.on('reconnected', () => console.log('reconectado'));
-        connection.on('disconnected', () => console.log('desconectado'));
-    }
-
 }

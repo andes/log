@@ -8,7 +8,7 @@ async function prueba() {
         reconnectInterval: 1500
     }
     try {
-        Connections.initialize(host, options);
+        await Connections.initialize(host, options);
         let key = 'microservice:hostias:tio';
         let paciente = {
             nombre: 'Juan',
@@ -44,7 +44,7 @@ async function prueba() {
         await log(fakeRequest, key, paciente, 'guardar', 'xx', 'yy')
 
     } catch (err) {
-        console.log(err);
+        console.log('Error: ', err);
     }
 };
 
