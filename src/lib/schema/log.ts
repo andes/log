@@ -48,6 +48,6 @@ export let schema = new mongoose.Schema({
 
 // Indices
 schema.index({ key: 1, fecha: -1 });
-schema.index({ paciente: 1, fecha: -1 });
+schema.index({ paciente: "text", fecha: -1 });
 
 export let model = mongoose.model('logs', schema, 'logs');
