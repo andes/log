@@ -1,19 +1,19 @@
-import { Document } from 'mongoose';
-import { model, schema } from '../schema/log';
+import { model } from '../schema/log';
 import { IRequest } from '../interfaces/log';
+
 /**
  * Crea un log en la base de datos
  *
  * @export
- * @param {Express.Request} req Request
+ * @param {IRequest} req Contiene dato de autenticación (usuario, aplicación, organización), conexión, etc.
  * @param {String} key Clave del registro. Debe ser en el formato modulo:clave1:valor2:clave2:valor2:.... (opcional)
- * @param {any} paciente Id del paciente (requerido si no se especifica key)
+ * @param {*} paciente Id del paciente (requerido si no se especifica key)
  * @param {String} operacion Nombre de la operación
  * @param {*} valor Datos actuales de la operación
- * @param {*} [anterior] Datos anterior de la operación
- * @returns {Promise<Document>}
+ * @param {*} [anterior] Datos anteriores de la operación
+ * @returns {Document} Documento guardado en la base de datos
  */
-export function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any): Promise<Document> {
+export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any) {
     let data = new model({
         key,
         paciente,
@@ -34,5 +34,5 @@ export function log(req: IRequest, key: String, paciente: any, operacion: String
             ip: req.connection && req.connection.localAddress
         }
     });
-    return data.save();
+    return await data.save();
 }

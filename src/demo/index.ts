@@ -1,33 +1,24 @@
 import { log } from '../lib/controller/log';
 import { Connections } from '../lib/controller/initialize';
 
-async function prueba() {
+async function demo() {
     let host = 'mongodb://localhost:27017/andesLogs';
     let options: {
         reconnectTries: 5,
         reconnectInterval: 1500
-    }
+    };
     try {
         await Connections.initialize(host, options);
-        let key = 'microservice:hostias:tio';
-        let paciente = {
-            nombre: 'Juan',
-            apellido: 'Perez',
-            fechaNacimiento: '01-01-1900',
-            sexo: 'Masculino',
-            activo: true
-        };
+
         let fakeRequest = {
             user: {
-                usuario: '777777777',
-                app: 'mi app',
+                app: 'mi-pp',
                 organizacion: {
                     id: '121324543543543',
                     nombre: 'Los Aromos',
                     direccion: 'Los alerces 1234'
                 }
             },
-
             ip: '192.168.1.1',
             useragent: {
                 isMobile: false,
@@ -40,14 +31,15 @@ async function prueba() {
                 source: 'Mi source'
             }
         };
-        // No me cuadra q un argumento sea un paciente, no queda genérico
-        await log(fakeRequest, key, paciente, 'guardar', 'xx', 'yy')
 
+        let document = await log(fakeRequest, 'microservice:hostias:tio', null, 'guardar', 'xx', 'yy');
+        // tslint:disable-next-line:no-console
+        console.log('OK');
     } catch (err) {
-        console.log('Error: ', err);
+        // tslint:disable-next-line:no-console
+        console.error('ERROR', err);
     }
-};
+    process.exit();
+}
 
-
-
-prueba();
+demo();

@@ -1,17 +1,15 @@
 import * as mongoose from 'mongoose';
-import { throws } from 'assert';
 
 export class Connections {
     static main: mongoose.Connection;
-
     /**
- * Crea una conexión a una base de datos mongodb
- *
- * @export
- * @param {Strin} host Un connection string.
- * @param {any} options un json con la opciones de conexión a la bd. 
- * @returns {Promise<Document>}
- */
+     * Inicializa la conexión a la base de datos
+     *
+     * @static
+     * @param {*} host Opciones de host
+     * @param {*} options Opciones de conexión
+     * @memberof Connections
+     */
     static async initialize(host: any, options: any) {
         try {
             mongoose.set('useCreateIndex', true);

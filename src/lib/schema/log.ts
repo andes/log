@@ -3,13 +3,13 @@ import * as mongoose from 'mongoose';
 export let schema = new mongoose.Schema({
     key: {
         type: String,
-        required: () => {
+        required() {
             return !this.paciente;
         }
     },
     paciente: {
-        type: mongoose.Schema.Types.Mixed,
-        required: () => {
+        type: mongoose.Types.ObjectId,
+        required() {
             return !this.key;
         }
     },
@@ -30,7 +30,7 @@ export let schema = new mongoose.Schema({
     },
     cliente: {
         ip: String,
-        userAgent: { // utiliza plugin https://github.com/biggora/express-useragent
+        userAgent: { // schema de plugin https://github.com/biggora/express-useragent
             isMobile: Boolean,
             isDesktop: Boolean,
             isBot: Boolean,
@@ -48,6 +48,5 @@ export let schema = new mongoose.Schema({
 
 // Indices
 schema.index({ key: 1, fecha: -1 });
-schema.index({ paciente: "text", fecha: -1 });
-
+schema.index({ paciente: 1, fecha: -1 });
 export let model = mongoose.model('logs', schema, 'logs');

@@ -3,10 +3,10 @@ export interface IRequest {
         usuario?: any,
         app?: String,
         organizacion?: any
-    },
-    ip?: String,
-    useragent?: any,
+    };
+    ip?: String;
+    useragent?: any;
     connection?: {
         localAddress?: String
-    }
+    };
 }
