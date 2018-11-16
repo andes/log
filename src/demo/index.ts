@@ -5,7 +5,8 @@ async function demo() {
     let host = 'mongodb://localhost:27017/andesLogs';
     let options: {
         reconnectTries: 5,
-        reconnectInterval: 1500
+        reconnectInterval: 1500,
+        useNewUrlParser: true
     };
     try {
         await Connections.initialize(host, options);

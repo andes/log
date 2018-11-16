@@ -13,7 +13,7 @@ export class Connections {
     static async initialize(host: any, options: any) {
         try {
             mongoose.set('useCreateIndex', true);
-            await mongoose.connect(host, { useNewUrlParser: true }, options);
+            await mongoose.connect(host, options);
             this.main = mongoose.connection;
         } catch (error) {
             throw error;
