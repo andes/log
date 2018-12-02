@@ -19,4 +19,15 @@ export class Connections {
             throw error;
         }
     }
+
+    /**
+     * Cierra la conexión a la base de datos
+     *
+     * @static
+     * @param {*} database Nombre de la base de datos
+     * @memberof Connections
+     */
+    static close(database) {
+        mongoose.connection.close(database);
+    }
 }
