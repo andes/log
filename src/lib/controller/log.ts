@@ -13,7 +13,7 @@ import { IRequest } from '../interfaces/log';
  * @param {*} [anterior] Datos anteriores de la operación
  * @returns {Document} Documento guardado en la base de datos
  */
-export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any) {
+export function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any): Promise<any> {
     let data = new model({
         key,
         paciente,
@@ -34,5 +34,5 @@ export async function log(req: IRequest, key: String, paciente: any, operacion: 
             ip: req.connection && req.connection.localAddress
         }
     });
-    return await data.save();
+    return data.save();
 }
