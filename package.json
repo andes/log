@@ -1,39 +1,39 @@
 {
-  "name": "@andes/log",
-  "version": "1.0.11",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/andes/log.git"
-  },
-  "author": "Red TICs",
-  "license": "GPL-3.0",
-  "scripts": {
-    "lint": "tslint --project .",
-    "start": "node index.js",
-    "demo": "npm run tsc && node src/demo/index.js",
-    "tsc": "tsc",
-    "tsc:w": "tsc -w",
-    "prepublish": "tsc -p ./ --outDir dist/",
-    "publish-please": "publish-please",
-    "prepublishOnly": "publish-please guard"
-  },
-  "main": "./dist/index.js",
-  "dependencies": {
-    "mongoose": "^5.3.11",
-    "url-parse": "^1.1.9",
-    "zone.js": "^0.8.26"
-  },
-  "devDependencies": {
-    "@types/jasmine": "2.5.45",
-    "@types/mongoose": "^5.3.1",
-    "@types/node": "^6.0.117",
-    "jasmine-core": "~2.6.2",
-    "jasmine-spec-reporter": "~4.1.0",
-    "publish-please": "^5.2.0",
-    "rxjs-compat": "^6.2.2",
-    "ts-node": "~3.0.4",
-    "tslint": "^5.11.0",
-    "tslint-eslint-rules": "^5.4.0",
-    "typescript": "^3.1.6"
-  }
+    "name": "@andes/log",
+    "version": "1.1.0",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/andes/log.git"
+    },
+    "author": "Red TICs",
+    "license": "GPL-3.0",
+    "scripts": {
+        "lint": "tslint --project .",
+        "start": "node index.js",
+        "demo": "npm run tsc && node src/demo/index.js",
+        "tsc": "tsc",
+        "tsc:w": "tsc -w",
+        "prepublish": "tsc -p ./ --outDir dist/",
+        "publish-please": "publish-please",
+        "prepublishOnly": "publish-please guard"
+    },
+    "main": "./dist/index.js",
+    "dependencies": {
+        "mongoose": "^5.3.11",
+        "url-parse": "^1.1.9",
+        "zone.js": "^0.8.26"
+    },
+    "devDependencies": {
+        "@types/jasmine": "2.5.45",
+        "@types/mongoose": "^5.3.1",
+        "@types/node": "^6.0.117",
+        "jasmine-core": "~2.6.2",
+        "jasmine-spec-reporter": "~4.1.0",
+        "publish-please": "^5.2.0",
+        "rxjs-compat": "^6.2.2",
+        "ts-node": "~3.0.4",
+        "tslint": "^5.11.0",
+        "tslint-eslint-rules": "^5.4.0",
+        "typescript": "^3.1.6"
+    }
 }
