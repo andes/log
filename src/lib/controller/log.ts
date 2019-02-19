@@ -55,10 +55,10 @@ export async function query(key: string | RegExp, paciente: mongoose.Types.Objec
         data.sort({ paciente: 1, fecha: -1 });
     }
     if (from) {
-        data.where('fecha').gte(from);
+        data.where('fecha').gte(from as any);
     }
     if (to) {
-        data.where('fecha').gte(to);
+        data.where('fecha').gte(to as any);
     }
     // Paginado
     data.skip(skip);
