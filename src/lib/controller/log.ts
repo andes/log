@@ -1,5 +1,7 @@
 import { model } from '../schema/log';
 import { IRequest } from '../interfaces/log';
+import * as mongoose from 'mongoose';
+import { stringify } from 'querystring';
 
 /**
  * Crea un log en la base de datos
@@ -35,4 +37,32 @@ export async function log(req: IRequest, key: String, paciente: any, operacion: 
         }
     });
     return await data.save();
+}
+
+export async function query(key: string | RegExp, paciente: mongoose.Types.ObjectId, from: Date = null, to: Date = null, skip = 0, limit = 0) {
+    let data = model.find({});
+    // Opciones de búsqueda
+    if (key) {
+        if (typeof key === 'object') {
+            data.where('key').regex(new RegExp(key, 'g'));
+        } else {
+            data.where('key').equals(key);
+        }
+        data.sort({ key: 1, fecha: -1 });
+    }
+    if (paciente) {
+        data.where('paciente').equals(paciente);
+        data.sort({ paciente: 1, fecha: -1 });
+    }
+    if (from) {
+        data.where('fecha').gte(from);
+    }
+    if (to) {
+        data.where('fecha').gte(to);
+    }
+    // Paginado
+    data.skip(skip);
+    data.limit(Math.min(limit, 50));
+    // Ejecuta la consulta
+    return await data.exec();
 }

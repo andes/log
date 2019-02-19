@@ -1,7 +1,9 @@
-import { log } from '../lib/controller/log';
+import { log, query } from '../lib/controller/log';
 import { Connections } from '../lib/controller/initialize';
+import * as mongoose from 'mongoose';
 
-async function demo() {
+async function write() {
+    console.log('Writing log...');
     let host = 'mongodb://localhost:27017/andesLogs';
     let options: {
         reconnectTries: 5,
@@ -33,14 +35,32 @@ async function demo() {
             }
         };
 
-        let document = await log(fakeRequest, 'microservice:hostias:tio', null, 'guardar', 'xx', 'yy');
-        // tslint:disable-next-line:no-console
+        let document = await log(fakeRequest, 'microservice:operacion:subnivel', '57f67a7ad86d9f64130a138d', 'guardar', 'xx', 'yy');
         console.log('OK');
     } catch (err) {
-        // tslint:disable-next-line:no-console
         console.error('ERROR', err);
     }
+}
+
+async function read() {
+    let result;
+    console.log('Read log by key...');
+    result = await query('microservice:operacion:subnivel', null);
+    console.log(result);
+
+    console.log('Read log by regex key...');
+    result = await query(/microservice:operacion/, null);
+    console.log(result);
+
+    console.log('Read log by paciente...');
+    result = await query(null, mongoose.Types.ObjectId('57f67a7ad86d9f64130a138d'));
+    console.log(result);
+}
+
+async function run() {
+    await write();
+    await read();
     process.exit();
 }
 
-demo();
+run();
