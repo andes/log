@@ -1,4 +1,4 @@
-import { model } from '../schema/log';
+import { initModel } from '../schema/log';
 import { IRequest } from '../interfaces/log';
 import * as mongoose from 'mongoose';
 import { stringify } from 'querystring';
@@ -16,6 +16,7 @@ import { stringify } from 'querystring';
  * @returns {Document} Documento guardado en la base de datos
  */
 export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any) {
+    let model = initModel();
     let data = new model({
         key,
         paciente,
@@ -56,6 +57,7 @@ export async function query(key: string | RegExp, paciente: mongoose.Types.Objec
         throw new Error('Debe ingresar el parámetro \'key\' o \'paciente\'');
     }
 
+    let model = initModel();
     let data = model.find({});
     // Opciones de búsqueda
     if (key) {
