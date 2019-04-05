@@ -11,23 +11,15 @@ export class Connections {
      * @memberof Connections
      */
     static async initialize(host: any, options: any) {
-        try {
-            mongoose.set('useCreateIndex', true);
-            await mongoose.connect(host, options);
-            this.main = mongoose.connection;
-        } catch (error) {
-            throw error;
-        }
+        this.main = mongoose.createConnection(host, options);
     }
 
     /**
      * Cierra la conexión a la base de datos
      *
-     * @static
-     * @param {*} database Nombre de la base de datos
      * @memberof Connections
      */
-    static close(database) {
-        mongoose.connection.close(database);
+    static close() {
+        this.main.close();
     }
 }

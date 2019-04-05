@@ -1,3 +1,4 @@
+import { Connections } from './../controller/initialize';
 import * as mongoose from 'mongoose';
 
 export let schema = new mongoose.Schema({
@@ -43,10 +44,20 @@ export let schema = new mongoose.Schema({
     },
     servidor: {
         ip: String
-    }
+    },
+    error: String
 });
 
 // Indices
 schema.index({ key: 1, fecha: -1 });
 schema.index({ paciente: 1, fecha: -1 });
-export let model = mongoose.model('logs', schema, 'logs');
+
+// Hay que diferir la inicialización del modelo está que esté lista la colección
+// jgabriel | Igual esta solución no me gusta mucho :(
+let _model = null;
+export function initModel(): mongoose.Model<mongoose.Document> {
+    if (!_model) {
+        _model = Connections.main.model('logs', schema, 'logs');
+    }
+    return _model;
+}
