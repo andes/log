@@ -13,9 +13,10 @@ import { stringify } from 'querystring';
  * @param {String} operacion Nombre de la operación
  * @param {*} valor Datos actuales de la operación
  * @param {*} [anterior] Datos anteriores de la operación
+ * @param {String} error Un string que representa al error (opcional)
  * @returns {Document} Documento guardado en la base de datos
  */
-export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any) {
+export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any, error?: any) {
     let model = initModel();
     let data = new model({
         key,
@@ -35,7 +36,8 @@ export async function log(req: IRequest, key: String, paciente: any, operacion: 
         },
         servidor: {
             ip: req.connection && req.connection.localAddress
-        }
+        },
+        error
     });
     return await data.save();
 }

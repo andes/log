@@ -44,7 +44,8 @@ export let schema = new mongoose.Schema({
     },
     servidor: {
         ip: String
-    }
+    },
+    error: String
 });
 
 // Indices

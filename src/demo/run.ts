@@ -26,7 +26,7 @@ async function write() {
             }
         };
 
-        let document = await log(fakeRequest, 'microservice:operacion:subnivel', '57f67a7ad86d9f64130a138d', 'guardar', 'xx', 'yy');
+        await log(fakeRequest, 'microservice:operacion:subnivel', '57f67a7ad86d9f64130a138d', 'guardar', 'xx', 'yy', 'Error: ');
         console.log('OK');
     } catch (err) {
         console.error('ERROR', err);
