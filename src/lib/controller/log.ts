@@ -16,7 +16,7 @@ import { stringify } from 'querystring';
  * @param {String} error Un string que representa al error (opcional)
  * @returns {Document} Documento guardado en la base de datos
  */
-export async function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any, error?: any): Promise<any> {
+export function log(req: IRequest, key: String, paciente: any, operacion: String, valor: any, anterior?: any, error?: any): Promise<any> {
     let model = initModel();
     let data = new model({
         key,
@@ -54,7 +54,7 @@ export async function log(req: IRequest, key: String, paciente: any, operacion: 
  * @param {number} [limit=0] Limita los consultados a una serie de registros.
  * @returns
  */
-export async function query(key: string | RegExp, paciente: mongoose.Types.ObjectId, desde: Date = null, hasta: Date = null, skip = 0, limit = 0): Promise<any> {
+export function query(key: string | RegExp, paciente: mongoose.Types.ObjectId, desde: Date = null, hasta: Date = null, skip = 0, limit = 0): Promise<any> {
     if (!key && !paciente) {
         throw new Error('Debe ingresar el parámetro \'key\' o \'paciente\'');
     }
