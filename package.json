@@ -1,6 +1,6 @@
 {
     "name": "@andes/log",
-    "version": "1.1.5",
+    "version": "2.0.0",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/andes/log.git"
@@ -27,8 +27,8 @@
     },
     "devDependencies": {
         "@types/jasmine": "2.5.45",
-        "@types/mongoose": "^5.3.1",
-        "@types/node": "^6.0.117",
+        "@types/mongoose": "^5.3.27",
+        "@types/node": "^8.10.51",
         "jasmine-core": "~2.6.2",
         "jasmine-spec-reporter": "~4.1.0",
         "publish-please": "^5.2.0",

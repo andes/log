@@ -88,7 +88,7 @@ export class Logger {
         const application = options.application || this.application;
         const expiredAt = this.duration ? moment(now).add(this.duration).toDate() : null;
 
-        const { action, data, req } = options;
+        const { action, data, req, error } = options;
 
         function client(request) {
             if (!request) { return undefined; }
@@ -128,7 +128,7 @@ export class Logger {
 
         let bucketNumber = 0;
 
-        const execLog = () => {
+        const execLog = async () => {
             return collection.update(
                 {
                     level,
@@ -153,6 +153,7 @@ export class Logger {
                             id: data && data._id,
                             traceId: this.traceId,
                             data,
+                            error,
                             action,
                             user: user(req),
                             organizacion: organizacion(req),
@@ -173,6 +174,7 @@ export class Logger {
                 await execLog();
                 retry = false;
             } catch (err) {
+
                 if (err.code === 17419) {
                     console.warn('document size limit: consider an smaller bucket');
                     bucketNumber++;
@@ -188,16 +190,15 @@ export class Logger {
             return args[0];
         } else {
             return {
-                type: args[0],
-                action: args[1],
-                data: args[2],
-                req: args[3]
+                action: args[0],
+                data: args[1],
+                req: args[2]
             };
         }
     }
 
     info(args: any);
-    info(type: String, action: String, data: any, req?: any);
+    info(action: String, data: any, req?: any);
     info() {
         let args = this.getOptions(arguments);
         return this.log({
@@ -207,9 +208,19 @@ export class Logger {
     }
 
     error(args: any);
-    error(type: String, action: String, data: any, req?: any);
+    error(action: String, data: any, error: any, req?: any);
     error() {
-        let args = this.getOptions(arguments);
+        let args;
+        if (typeof arguments[0] === 'object') {
+            args = arguments[0];
+        } else {
+            args = {
+                action: arguments[0],
+                data: arguments[1],
+                error: arguments[2],
+                req: arguments[3]
+            };
+        }
         return this.log({
             ...args,
             level: 'error'
