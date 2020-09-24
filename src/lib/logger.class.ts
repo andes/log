@@ -135,36 +135,37 @@ export class Logger {
                     type,
                     start: { $lte: now },
                     end: { $gte: now },
+                    count: { $lte: 1000 },
                     bucketNumber
                 }, {
-                    $inc: { count: 1 },
-                    $setOnInsert: {
-                        start: moment(now).startOf(bucketBy).toDate(),
-                        end: moment(now).endOf(bucketBy).toDate(),
-                        level,
-                        type,
-                        expiredAt,
-                        bucketNumber
-                    },
-                    $push: {
-                        entries: {
-                            application,
-                            date: now,
-                            id: data && data._id,
-                            traceId: this.traceId,
-                            data,
-                            error,
-                            action,
-                            user: user(req),
-                            organizacion: organizacion(req),
-                            cliente: client(req),
-                            servidor: server(req),
-                            url: url(req)
-                        }
+                $inc: { count: 1 },
+                $setOnInsert: {
+                    start: moment(now).startOf(bucketBy).toDate(),
+                    end: moment(now).endOf(bucketBy).toDate(),
+                    level,
+                    type,
+                    expiredAt,
+                    bucketNumber
+                },
+                $push: {
+                    entries: {
+                        application,
+                        date: now,
+                        id: data && data._id,
+                        traceId: this.traceId,
+                        data,
+                        error,
+                        action,
+                        user: user(req),
+                        organizacion: organizacion(req),
+                        cliente: client(req),
+                        servidor: server(req),
+                        url: url(req)
                     }
-                }, {
-                    upsert: true
                 }
+            }, {
+                upsert: true
+            }
             );
         };
 
