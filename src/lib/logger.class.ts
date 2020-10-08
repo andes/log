@@ -8,6 +8,7 @@ export interface LoggerOptions {
     type?: string;
     expiredAt?: string;
     bucketBy?: string;
+    bucketSize?: number;
     level?: string;
     application?: string;
     traceId?: string;
@@ -19,6 +20,7 @@ export class Logger {
     private type = '';
     private expiredAt = '';
     private bucketBy = 'day';
+    private bucketSize = 1000;
     private level: string;
     private duration = null;
     private application = '';
@@ -33,6 +35,7 @@ export class Logger {
             type = null,
             expiredAt = null,
             bucketBy = 'd',
+            bucketSize = 1000,
             level = null,
             application = undefined,
             traceId = undefined
@@ -51,6 +54,7 @@ export class Logger {
         this.type = type;
         this.expiredAt = expiredAt;
         this.bucketBy = bucketBy;
+        this.bucketSize = bucketSize;
         this.level = level;
         this.application = application;
         this.traceId = traceId;
@@ -65,7 +69,7 @@ export class Logger {
     private async createCollection() {
         const collection = this.connection.collection(this.module);
         collection.createIndex({ expiredAt: 1 }, { expireAfterSeconds: 0 });
-        collection.createIndex({ type: 1, start: 1, end: 1, level: 1, bucketNumber: 1 }, { expireAfterSeconds: 0 });
+        collection.createIndex({ type: 1, start: 1, end: 1, level: 1, bucketNumber: 1 });
     }
 
     private getCollection(module) {
@@ -135,37 +139,39 @@ export class Logger {
                     type,
                     start: { $lte: now },
                     end: { $gte: now },
-                    count: { $lte: 1000 },
-                    bucketNumber
-                }, {
-                $inc: { count: 1 },
-                $setOnInsert: {
-                    start: moment(now).startOf(bucketBy).toDate(),
-                    end: moment(now).endOf(bucketBy).toDate(),
-                    level,
-                    type,
-                    expiredAt,
+                    count: { $lte: this.bucketSize },
                     bucketNumber
                 },
-                $push: {
-                    entries: {
-                        application,
-                        date: now,
-                        id: data && data._id,
-                        traceId: this.traceId,
-                        data,
-                        error,
-                        action,
-                        user: user(req),
-                        organizacion: organizacion(req),
-                        cliente: client(req),
-                        servidor: server(req),
-                        url: url(req)
+                {
+                    $inc: { count: 1 },
+                    $setOnInsert: {
+                        start: moment(now).startOf(bucketBy).toDate(),
+                        end: moment(now).endOf(bucketBy).toDate(),
+                        level,
+                        type,
+                        expiredAt,
+                        bucketNumber
+                    },
+                    $push: {
+                        entries: {
+                            application,
+                            date: now,
+                            id: data && data._id,
+                            traceId: this.traceId,
+                            data,
+                            error,
+                            action,
+                            user: user(req),
+                            organizacion: organizacion(req),
+                            cliente: client(req),
+                            servidor: server(req),
+                            url: url(req)
+                        }
                     }
+                },
+                {
+                    upsert: true
                 }
-            }, {
-                upsert: true
-            }
             );
         };
 
@@ -177,7 +183,7 @@ export class Logger {
             } catch (err) {
 
                 if (err.code === 17419) {
-                    console.warn('document size limit: consider an smaller bucket');
+                    console.warn('WARM: document size limit: consider an smaller bucket');
                     bucketNumber++;
                 } else {
                     retry = false;
