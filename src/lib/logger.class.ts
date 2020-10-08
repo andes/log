@@ -68,8 +68,8 @@ export class Logger {
 
     private async createCollection() {
         const collection = this.connection.collection(this.module);
-        collection.createIndex({ expiredAt: 1 }, { expireAfterSeconds: 0 });
-        collection.createIndex({ type: 1, start: 1, end: 1, level: 1, bucketNumber: 1 });
+        collection.createIndex({ expiredAt: 1 }, { expireAfterSeconds: 0, background: true });
+        collection.createIndex({ type: 1, start: 1, end: 1, level: 1, bucketNumber: 1 }, { background: true });
     }
 
     private getCollection(module) {
