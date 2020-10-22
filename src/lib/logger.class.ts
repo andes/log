@@ -79,7 +79,7 @@ export class Logger {
 
     private expiredOffset(expiredAt: String) {
         const [num, unit] = expiredAt.split(' ');
-        return moment.duration(parseInt(num, 2), unit as any);
+        return moment.duration(parseInt(num, 10), unit as any);
 
     }
 
