@@ -1,7 +1,6 @@
 import { initModel } from '../schema/log';
 import { IRequest } from '../interfaces/log';
 import * as mongoose from 'mongoose';
-import { stringify } from 'querystring';
 
 /**
  * Crea un log en la base de datos
