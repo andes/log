@@ -5,13 +5,15 @@ export let schema = new mongoose.Schema({
     key: {
         type: String,
         required() {
-            return !this.paciente;
+            const self: any = this;
+            return !self.paciente;
         }
     },
     paciente: {
         type: mongoose.Types.ObjectId,
         required() {
-            return !this.key;
+            const self: any = this;
+            return !self.key;
         }
     },
     fecha: {
@@ -54,7 +56,7 @@ schema.index({ paciente: 1, fecha: -1 });
 
 // Hay que diferir la inicialización del modelo está que esté lista la colección
 // jgabriel | Igual esta solución no me gusta mucho :(
-let _model = null;
+let _model: any = null;
 export function initModel(): mongoose.Model<mongoose.Document> {
     if (!_model) {
         _model = Connections.main.model('logs', schema, 'logs');

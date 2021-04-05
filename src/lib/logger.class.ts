@@ -22,7 +22,7 @@ export class Logger {
     private bucketBy = 'day';
     private bucketSize = 1000;
     private level: string;
-    private duration = null;
+    private duration: any = null;
     private application = '';
     private traceId: string;
     private _options: LoggerOptions;
@@ -72,7 +72,7 @@ export class Logger {
         collection.createIndex({ type: 1, start: 1, end: 1, level: 1, bucketNumber: 1 }, { background: true });
     }
 
-    private getCollection(module) {
+    private getCollection(module: string) {
         module = module || this.module;
         return this.connection.collection(module);
     }
@@ -94,7 +94,7 @@ export class Logger {
 
         const { action, data, req, error } = options;
 
-        function client(request) {
+        function client(request: any) {
             if (!request) { return undefined; }
             return {
                 ip: request.ip,
@@ -102,7 +102,7 @@ export class Logger {
             };
         }
 
-        function server(request) {
+        function server(request: any) {
             if (!request) {
                 return {
                     hostname: require('os').hostname()
@@ -115,17 +115,17 @@ export class Logger {
             }
         }
 
-        function user(request) {
+        function user(request: any) {
             if (!request) { return undefined; }
             return request.user && (request.user.usuario || request.user.app);
         }
 
-        function organizacion(request) {
+        function organizacion(request: any) {
             if (!request) { return undefined; }
             return request.user && request.user.organizacion;
         }
 
-        function url(request) {
+        function url(request: any) {
             if (!request) { return undefined; }
             return { url: req.originalUrl, method: req.method };
         }
@@ -204,8 +204,8 @@ export class Logger {
         }
     }
 
-    info(args: any);
-    info(action: String, data: any, req?: any);
+    info(args: any): any;
+    info(action: String, data: any, req?: any): any;
     info() {
         let args = this.getOptions(arguments);
         return this.log({
@@ -214,8 +214,8 @@ export class Logger {
         });
     }
 
-    error(args: any);
-    error(action: String, data: any, error: any, req?: any);
+    error(args: any): any;
+    error(action: String, data: any, error: any, req?: any): any;
     error() {
         let args;
         if (typeof arguments[0] === 'object') {
@@ -234,7 +234,7 @@ export class Logger {
         });
     }
 
-    startTrace(id = null) {
+    startTrace(id: any = null) {
         if (!id) {
             id = String(new ObjectId());
         }
