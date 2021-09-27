@@ -1,5 +1,5 @@
-import { Connection, Types } from 'mongoose';
 import * as moment from 'moment';
+import { Connection, Types } from 'mongoose';
 const ObjectId = Types.ObjectId;
 
 export interface LoggerOptions {
@@ -92,7 +92,10 @@ export class Logger {
         const application = options.application || this.application;
         const expiredAt = this.duration ? moment(now).add(this.duration).toDate() : null;
 
-        const { action, data, req, error } = options;
+        let { action, data, req, error } = options;
+        if (error instanceof Error) {
+            error = error.message;
+        }
 
         function client(request: any) {
             if (!request) { return undefined; }
