@@ -183,7 +183,7 @@ export class Logger {
             try {
                 await execLog();
                 retry = false;
-            } catch (err) {
+            } catch (err: any) {
 
                 if (err.code === 17419) {
                     console.warn('WARM: document size limit: consider an smaller bucket');
