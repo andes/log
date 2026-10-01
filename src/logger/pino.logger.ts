@@ -1,6 +1,5 @@
 import pino from 'pino';
 import pinoHttp from 'pino-http';
-import { trace, context } from '@opentelemetry/api';
 import { Logger } from './logger.interface';
 import { initOtel } from '../otel/otel';
 
@@ -58,12 +57,6 @@ export function initLogger(config: LoggerConfig): pino.Logger {
             paths: REDACT_PATHS,
             censor: '[REDACTED]',
         },
-        mixin() {
-            const span = trace.getSpan(context.active());
-            if (!span) return {};
-            const sc = span.spanContext();
-            return { trace_id: sc.traceId, span_id: sc.spanId };
-        },
     });
     setBaseLogger(logger);
     return logger;
@@ -92,12 +85,6 @@ function getBaseLogger(): pino.Logger {
         redact: {
             paths: REDACT_PATHS,
             censor: '[REDACTED]',
-        },
-        mixin() {
-            const span = trace.getSpan(context.active());
-            if (!span) return {};
-            const sc = span.spanContext();
-            return { trace_id: sc.traceId, span_id: sc.spanId };
         },
     });
 }
