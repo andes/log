@@ -1,20 +1,15 @@
 {
-  "compileOnSave": false,
-  "compilerOptions": {
-    "baseUrl": "src/demo",
-    "sourceMap": true,
-    "declaration": false,
-    "moduleResolution": "node",
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "noImplicitAny": true,
-    "target": "es5",
-    "typeRoots": [
-      "node_modules/@types"
-    ],
-    "lib": [
-      "es2016",
-      "dom"
-    ]
-  }
+    "compilerOptions": {
+        "target": "es2020",
+        "module": "commonjs",
+        "declaration": true,
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "moduleResolution": "node"
+    },
+    "include": ["src"],
+    "exclude": ["dist", "node_modules", "src/angular", "src/angular.ts"]
 }
