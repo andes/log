@@ -79,7 +79,7 @@ export function setBaseLogger(logger: PinoLoggerType): void {
 
 /**
  * Inicializa OTel (OTLP → Alloy) y luego Pino.
- * Preferible: `node --require @andes/log/register` para instrumentar antes
+ * Usar `node --require @andes/log/register` para instrumentar antes
  * de cualquier otro import de la app.
  */
 export function initObservability(config: ObservabilityConfig): PinoLoggerType {
