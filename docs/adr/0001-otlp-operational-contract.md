@@ -1,88 +1,149 @@
-# ADR 0001 — Contrato operacional `@andes/log` ↔ Alloy / Loki / Tempo
+# ADR 0001 — Contrato operacional y de auditoría (`@andes/log` ↔ observabilidad)
 
 ## Estado
 
-Propuesto (PR sobre `CORE-129`)
+Propuesto
 
 ## Contexto
 
-El stack Andes de observabilidad (repo `andes/observabilidad`) recibe telemetría en Grafana Alloy
-y la persiste en Loki (logs), Tempo (trazas) y Prometheus (métricas).
-
-`@andes/log` v4 introduce Pino + OpenTelemetry. Hay que fijar:
-
-1. Un solo path de ingesta operacional (evitar duplicados en Loki).
-2. Convención de campos/labels.
-3. Dónde samplear.
-4. Coexistencia con logs de dominio en Mongo (“andes logs”).
+Definir el contrato entre la librería `@andes/log` (apps Node/Express) y el stack
+`andes/observabilidad` (Grafana Alloy → Loki / Tempo / Prometheus): canales
+operacional vs auditoría, path de ingesta, convenciones de campos, sampling, PII
+y bootstrap OpenTelemetry.
 
 ## Decisiones
 
-### 1. Ingesta operacional: solo OTLP (path B)
+### 1. Canales
 
-| Señal | Destino |
-|---|---|
-| Logs operacionales | OTLP HTTP `${OTEL_EXPORTER_OTLP_ENDPOINT}/v1/logs` → Alloy → Loki |
-| Traces | `/v1/traces` → Alloy → Tempo |
-| Metrics | `/v1/metrics` → Alloy → Prometheus |
+| Canal | Responsabilidad | Destino | Sample |
+|---|---|---|---|
+| Operacional | Errores, wide events, trazas, métricas, debug | OTLP → Alloy → Loki / Tempo / Prometheus | Según señal (ver §5) |
+| Auditoría / dominio | Quién hizo qué sobre qué (cumplimiento, historial) | Mongo (“andes logs”) | Nunca |
 
-**No** usar scrape de stdout Docker (`obs.enabled=true`) para servicios con `@andes/log` v4.
-Stdout puede quedar para `docker logs` / debug local, pero no como path a Loki.
+- Tratar `@andes/log` v4 como capa **operacional** (Pino + OpenTelemetry).
+- Mantener auditoría en Mongo con la API de dominio existente hasta una migración explícita.
+- No sustituir un evento de auditoría por un `logInfo` / wide event operacional.
+- Correlacionar ambos canales con `request_id` y `trace_id` cuando exista request HTTP; no copiar PHI a Loki.
 
-Motivo: si conviven stdout→Alloy y OTLP logs, Loki duplica líneas y empeora la correlación.
+### 2. Ingesta operacional (único path a Loki)
 
-### 2. Dominio / auditoría: Mongo por ahora
+| Señal | Endpoint OTLP | Target |
+|---|---|---|
+| Logs | `${OTEL_EXPORTER_OTLP_ENDPOINT}/v1/logs` | Alloy → Loki (`http://loki:3100/otlp`) |
+| Traces | `/v1/traces` | Alloy → Tempo (`tempo:4317`) |
+| Metrics | `/v1/metrics` | Alloy → Prometheus remote_write |
 
-Los logs de **dominio** (“andes logs” → Mongo) **siguen** fuera de este path OTLP por ahora.
+- Exponer Alloy en el host central en **TCP 4317** (gRPC) y **TCP 4318** (HTTP).
+- Apuntar apps a `OTEL_EXPORTER_OTLP_ENDPOINT=http://<host-alloy>:4318` (sin path final).
+- Usar **solo OTLP** como path de logs operacionales hacia Loki.
+- No habilitar scrape Docker de stdout (`obs.enabled=true`) en servicios que emiten OTLP logs.
+- Reservar `obs.enabled=true` + scrape stdout para cargas **sin** export OTLP de logs.
+- Permitir stdout local solo para `docker logs` / depuración; no usarlo como ingesta a Loki si ya existe OTLP.
 
-- v4 = capa **operacional** (Pino + OTel → Alloy).
-- Dominio sigue en el canal Mongo existente (v3 / API actual) hasta una migración explícita.
-- No mezclar PII/auditoría clínica en Loki vía wide events.
+Motivo: la coexistencia de scrape stdout y OTLP logs produce líneas duplicadas en Loki y degrada la correlación.
 
-### 3. Convención de campos
+### 3. Convenciones de campos
 
-**Resource / labels de baja cardinalidad** (OTel → Loki):
+#### 3.1 Resource / labels de baja cardinalidad
 
-- `service.name` → label efectivo `service_name`
-- `deployment.environment` → `deployment_environment`
-- `level` (string: `info`, `warn`, `error`, …)
+| Emisión (OTel resource / Pino) | Label Loki | Notas |
+|---|---|---|
+| `service.name` | `service_name` | Obligatorio |
+| `deployment.environment` | `deployment_environment` | Valores: `local` \| `test` \| `prod` (u otros acordados) |
+| `level` (string) | `level` | `trace` \| `debug` \| `info` \| `warn` \| `error` \| `fatal` |
 
-**Campos en el cuerpo del log:**
+- No promover a label atributos de alta cardinalidad (`request_id`, `pacienteId`, `path` con IDs, etc.).
+- En el pipeline Docker de Alloy (solo cargas sin OTLP), extraer los mismos nombres de campo hacia labels.
+
+#### 3.2 Cuerpo del log operacional
+
+| Campo | Obligatorio | Convención |
+|---|---|---|
+| `msg` | sí | Mensaje Pino |
+| `module` | sí en loggers de módulo | `createLogger('<modulo>')` |
+| `action` | sí en eventos de negocio / HTTP | String estable, `dominio.verbo` o `http.request` (snake/dot, sin PII) |
+| `trace_id` | cuando haya span activo | Hex OTel; correlacionar con Tempo |
+| `span_id` | cuando haya span activo | Hex OTel |
+| `request_id` | en wide events HTTP | UUID o valor de `X-Request-Id` |
+
+#### 3.3 Wide event (access canónico)
+
+Campos fijos además de resource:
+
+- `action` = `http.request`
+- `request_id`, `method`, `path`, `status_code`, `duration_ms`, `outcome` (`success` \| `error`)
+- `service.instance.id`, `deployment.environment`, `version` (app)
+
+- Usar wide events como access log canónico.
+- Enriquecer solo con identificadores no sensibles (p. ej. `paciente.id` interno), nunca DNI u otra PHI.
+
+#### 3.4 Auditoría Mongo (contrato mínimo)
 
 | Campo | Uso |
 |---|---|
-| `msg` | Mensaje (Pino) |
-| `module` | Módulo (`createLogger('pacientes')`) |
-| `action` | Acción estable (`paciente.crear`, `http.request`) |
-| `trace_id` / `span_id` | Correlación con Tempo |
-| Wide event | `request_id`, `method`, `path`, `status_code`, `duration_ms`, `outcome` |
+| `operacion` | Acción de dominio (equivalente semántico a `action`) |
+| `fecha` | Timestamp del evento |
+| `usuario` / `organizacion` / `app` | Actor y contexto |
+| `paciente` **o** `key` | Sujeto |
+| `data.anterior` / `data.valor` | Diff de negocio |
+| `cliente` / `servidor` | Origen de la petición |
+| `error` | Opcional |
+| `request_id` / `trace_id` | Correlación con canal operacional (agregar al persistir) |
 
-### 4. Bridge Pino → OTel Logs + correlacion
+### 4. Bootstrap y bridge (`@andes/log`)
 
-- El SDK OTel debe inicializarse **antes** de la primera carga/uso de `pino` (register temprano o `initObservability` con require diferido).
-- Además, mixin vía `@opentelemetry/api` aporta `trace_id`/`span_id` en cada línea.
+- Inicializar el SDK OTel **antes** del primer `require`/`import` efectivo de `pino`.
+- Usar `node --require @andes/log/register` (o `NODE_OPTIONS`) en el entrypoint.
+- Hacer `initOtel` idempotente; permitir `initObservability` después del register.
+- Cargar `pino` / `pino-http` de forma diferida tras `sdk.start()`.
+- Incluir mixin vía `@opentelemetry/api` para `trace_id` / `span_id` en cada línea.
+- Redactar headers sensibles: `authorization`, `cookie`, `x-api-key`, `set-cookie`.
 
 ### 5. Sampling
 
-| Señal | Dónde | Notas |
+| Señal | Dónde configurar | Regla |
 |---|---|---|
-| Wide events (access canónico) | Librería: `LOG_SAMPLE_RATE`, `LOG_SLOW_THRESHOLD_MS` | Errores (≥400) y lentos: siempre |
-| Traces | SDK OTel / collector | **No** reutilizar `LOG_SAMPLE_RATE` |
-| Logs `logInfo` / negocio | `LOG_LEVEL` + criterio de app | Sin sample aleatorio ciego |
-| Access `pino-http` | Off por defecto (`LOG_HTTP_ACCESS=true` para habilitar) | Evitar doble access log con wide events |
+| Wide events | Lib: `LOG_SAMPLE_RATE`, `LOG_SLOW_THRESHOLD_MS` | Emitir siempre si `status_code >= 400`, hay `error`, o `duration_ms` supera umbral; si no, samplear con el ratio |
+| Traces | SDK OTel y/o collector | No reutilizar `LOG_SAMPLE_RATE` |
+| Logs `logInfo` / `logWarn` / `logError` | `LOG_LEVEL` + criterio de aplicación | No aplicar sample aleatorio ciego |
+| Access `pino-http` | `LOG_HTTP_ACCESS` (default off) | Mantener off en prod si el access canónico es el wide event |
+| Auditoría Mongo | — | No samplear |
 
-### 6. PII
+### 6. PII / PHI
 
-No enriquecer wide events ni logs operacionales con DNI, tokens, bodies clínicos u otra PHI/PII.
-La redacción de headers (`authorization`, `cookie`, …) no cubre campos de negocio.
+- No emitir DNI, tokens, bodies clínicos ni otra PII/PHI en logs OTLP ni wide events.
+- Tratar la redacción de headers como insuficiente para campos de negocio.
+- Persistir datos sensibles de dominio solo en el canal de auditoría Mongo, con retención y ACLs propias.
+
+### 7. Stack `andes/observabilidad`
+
+- Recibir OTLP en Alloy (`4317` / `4318`) y enrutar logs→Loki, traces→Tempo, metrics→Prometheus.
+- Documentar en PLAN/README el mismo contrato: operacional = OTLP; auditoría = Mongo.
+- Mantener el pipeline `loki.source.docker` + `obs.enabled=true` solo para servicios **sin** OTLP logs.
+- Alinear datasources Grafana (Loki↔Tempo) con `trace_id` / `service_name`.
+- Exigir `OTEL_EXPORTER_OTLP_ENDPOINT` en apps con `@andes/log` v4; no combinar con `obs.enabled` para ingesta.
+
+### 8. Variables de entorno (`@andes/log`)
+
+| Variable | Default | Rol |
+|---|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Base OTLP del Alloy |
+| `SERVICE_NAME` | `unknown` | `service.name` |
+| `INSTANCE_ID` | `1` | `service.instance.id` |
+| `DEPLOYMENT_ENVIRONMENT` | `local` | `deployment.environment` |
+| `LOG_LEVEL` | `info` | Nivel Pino |
+| `LOG_SAMPLE_RATE` | `0.05` | Sample wide events OK |
+| `LOG_SLOW_THRESHOLD_MS` | `1000` | Umbral wide event lento |
+| `LOG_HTTP_ACCESS` | off | Habilitar access pino-http |
 
 ## Consecuencias
 
-- Apps: `OTEL_EXPORTER_OTLP_ENDPOINT` apuntando al Alloy central (`:4318`); sin `obs.enabled` para ingesta.
-- Smoke: request → traza en Tempo + log en Loki con el mismo `trace_id`, sin duplicar.
-- Observabilidad (PLAN/README) deberá reflejar: operacional = OTLP; dominio = Mongo (transitorio).
+- Implementar en `@andes/log`: register temprano, require diferido de Pino, mixin de traza, wide event con `action`, access pino-http off por defecto, README alineado a este ADR.
+- Alinear `andes/observabilidad` (PLAN/README) a este contrato.
+- Validar: request HTTP → traza en Tempo + log en Loki con el mismo `trace_id`; sin duplicados por scrape Docker.
+- Conservar consumidores de auditoría Mongo hasta definir migración o paquete dedicado.
 
 ## Referencias
 
-- Stack: `andes/observabilidad` — Alloy OTLP `:4317`/`:4318`
-- Issue/PR: CORE-129 / `andes/log#11`
+- Stack: `andes/observabilidad` — Alloy OTLP, Loki, Tempo, Prometheus
+- Librería: `@andes/log` v4

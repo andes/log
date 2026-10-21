@@ -1,19 +1,19 @@
 # @andes/log v4
 
-Logging operacional con **Pino + OpenTelemetry** (OTLP → Alloy / Loki / Tempo / Prometheus)
-y *wide events* para Node.js + Express.
+Capa operacional: Pino + OpenTelemetry (OTLP → Alloy → Loki / Tempo / Prometheus)
+y wide events para Node.js + Express.
 
-Contrato y decisiones: [`docs/adr/0001-otlp-operational-contract.md`](./docs/adr/0001-otlp-operational-contract.md).
+Contrato: [`docs/adr/0001-otlp-operational-contract.md`](./docs/adr/0001-otlp-operational-contract.md).
 
 ## Alcance
 
 | Canal | Destino |
 |---|---|
-| **Operacional** (esta v4) | OTLP → Alloy → Loki / Tempo / Prometheus |
-| **Dominio / auditoría** | Mongo (“andes logs”) — **sigue por ahora** fuera de OTLP |
+| Operacional (v4) | OTLP → Alloy → Loki / Tempo / Prometheus |
+| Auditoría / dominio | Mongo (“andes logs”), fuera de OTLP hasta migración explícita |
 
-**Un solo path a Loki: OTLP.** No uses label Docker `obs.enabled=true` para scrapear stdout
-de servicios con v4 (evitarías logs duplicados).
+- Usar **solo OTLP** como path de logs operacionales hacia Loki.
+- No habilitar `obs.enabled=true` (scrape stdout) en servicios que ya exportan OTLP logs: la doble ingesta genera líneas duplicadas en Loki.
 
 ## Instalación
 
@@ -27,31 +27,31 @@ de servicios con v4 (evitarías logs duplicados).
 
 ## Uso — Backend (Express)
 
-### 1. Bootstrap OTel (recomendado) + init
+### 1. Bootstrap OTel + init
 
-Para que `instrumentation-pino` parchee antes de cargar `pino`:
+Inicializar el SDK antes de cargar `pino`:
 
 ```bash
 node --require @andes/log/register dist/server.js
 # o: NODE_OPTIONS='--require @andes/log/register'
 ```
 
-En `server.ts` (primeras líneas del entrypoint):
+En el entrypoint:
 
 ```typescript
 import { initObservability, createLogger, wideEventMiddleware, httpMiddleware } from '@andes/log';
 
 initObservability({ serviceName: 'mi-api' });
 
-// Access canónico = wide events (sampleados).
-// httpMiddleware deja autoLogging off salvo LOG_HTTP_ACCESS=true.
+// Access canónico = wide events.
+// pino-http: autoLogging off salvo LOG_HTTP_ACCESS=true.
 app.use(httpMiddleware());
 app.use(wideEventMiddleware(createLogger('wide-event')));
 ```
 
-`initObservability` configura:
+Efectos de `initObservability`:
 
-- SDK OTel → OTLP HTTP (`/v1/traces`, `/v1/metrics`, `/v1/logs`) hacia Alloy `:4318`
+- Export OTLP HTTP (`/v1/traces`, `/v1/metrics`, `/v1/logs`) hacia Alloy `:4318`
 - Pino con resource attrs OTel + mixin `trace_id` / `span_id`
 - Redacción de headers sensibles
 
@@ -66,26 +66,28 @@ logger.logInfo('Paciente creado', { action: 'paciente.crear', pacienteId: '123' 
 logger.logError(new Error('ANDES timeout'), { action: 'mpi.timeout', endpoint: '/mpi' });
 
 enrichWideEventUser(req, res);
-// Sin PII/PHI (no DNI, tokens, bodies clínicos)
+// Sin PII/PHI en el canal operacional
 enrichWideEvent(req, res, { paciente: { id: '123' } });
 ```
+
+Convenciones: ver ADR §3 (`module`, `action`, labels, wide event, auditoría Mongo).
 
 ## Variables de entorno
 
 | Variable | Default | Descripción |
 |---|---|---|
-| `LOG_LEVEL` | `info` | Nivel: trace, debug, info, warn, error, fatal |
-| `LOG_SAMPLE_RATE` | `0.05` | Sampleo de **wide events** exitosos (no traces) |
-| `LOG_SLOW_THRESHOLD_MS` | `1000` | Request lento → siempre se loguea el wide event |
-| `LOG_HTTP_ACCESS` | off | `true` = pino-http loguea cada request (además del wide event) |
+| `LOG_LEVEL` | `info` | Nivel Pino |
+| `LOG_SAMPLE_RATE` | `0.05` | Sample de wide events exitosos (no aplica a traces ni a auditoría) |
+| `LOG_SLOW_THRESHOLD_MS` | `1000` | Umbral de request lento (wide event siempre emitido) |
+| `LOG_HTTP_ACCESS` | off | `true` habilita access log de pino-http |
 | `SERVICE_NAME` | `unknown` | → `service.name` |
 | `INSTANCE_ID` | `1` | → `service.instance.id` |
 | `DEPLOYMENT_ENVIRONMENT` | `local` | → `deployment.environment` |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Alloy central |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Base OTLP del Alloy central |
 
-## Smoke (dev-monitoreo)
+## Validación contra el stack
 
-1. `OTEL_EXPORTER_OTLP_ENDPOINT=http://<host-monitoreo>:4318`
-2. Un 200 (o forzar sample) y un 500
-3. Verificar traza en Tempo + log en Loki con el mismo `trace_id`
-4. Confirmar que **no** hay duplicado por scrape Docker
+1. Configurar `OTEL_EXPORTER_OTLP_ENDPOINT=http://<host-alloy>:4318`.
+2. Emitir un request 200 (o forzar sample) y un 500.
+3. Comprobar traza en Tempo y log en Loki con el mismo `trace_id`.
+4. Comprobar que no existan líneas duplicadas por scrape Docker (`obs.enabled`).
