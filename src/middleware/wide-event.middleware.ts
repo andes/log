@@ -38,6 +38,7 @@ export function wideEventMiddleware(logger: Logger) {
         const startTime = Date.now();
 
         const wideEvent: WideEvent = {
+            action: 'http.request',
             request_id: (req.headers['x-request-id'] as string) || randomUUID(),
             timestamp: new Date().toISOString(),
             method: req.method,

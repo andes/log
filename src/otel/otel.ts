@@ -14,7 +14,13 @@ export interface OtelConfig {
     endpoint?: string;
 }
 
+let started: NodeSDK | null = null;
+
 export function initOtel(config: OtelConfig): NodeSDK {
+    if (started) {
+        return started;
+    }
+
     const endpoint = (config.endpoint || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318').replace(/\/$/, '');
 
     const resource = new Resource({
@@ -43,6 +49,7 @@ export function initOtel(config: OtelConfig): NodeSDK {
     });
 
     sdk.start();
+    started = sdk;
 
     process.on('SIGTERM', () => {
         sdk.shutdown().finally(() => process.exit(0));
