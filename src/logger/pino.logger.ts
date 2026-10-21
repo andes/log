@@ -1,9 +1,9 @@
-import pino from 'pino';
-import pinoHttp from 'pino-http';
+import type { Logger as PinoLoggerType } from 'pino';
+import { context, trace } from '@opentelemetry/api';
 import { Logger } from './logger.interface';
 import { initOtel } from '../otel/otel';
 
-let baseLogger: pino.Logger | null = null;
+let baseLogger: PinoLoggerType | null = null;
 
 export interface LoggerConfig {
     serviceName: string;
@@ -24,11 +24,65 @@ const REDACT_PATHS = [
     'res.headers["set-cookie"]',
 ];
 
-export function setBaseLogger(logger: pino.Logger): void {
+/** Carga diferida: el SDK OTel debe start() antes del primer require('pino'). */
+function loadPino(): typeof import('pino') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('pino');
+}
+
+function loadPinoHttp(): typeof import('pino-http') {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('pino-http');
+}
+
+function traceMixin(): Record<string, string> {
+    const span = trace.getSpan(context.active());
+    if (!span) {
+        return {};
+    }
+    const { traceId, spanId } = span.spanContext();
+    if (!traceId || traceId === '00000000000000000000000000000000') {
+        return {};
+    }
+    return { trace_id: traceId, span_id: spanId };
+}
+
+function buildPinoOptions(config: {
+    serviceName: string;
+    level?: string;
+    instanceId?: string;
+    environment?: string;
+}) {
+    return {
+        name: config.serviceName,
+        level: config.level || process.env.LOG_LEVEL || 'info',
+        base: {
+            'service.name': config.serviceName,
+            'service.instance.id': config.instanceId || process.env.INSTANCE_ID || '1',
+            'deployment.environment': config.environment || process.env.DEPLOYMENT_ENVIRONMENT || 'local',
+            host: process.env.HOSTNAME || 'unknown',
+        },
+        mixin: traceMixin,
+        formatters: {
+            level: (label: string) => ({ level: label }),
+        },
+        redact: {
+            paths: REDACT_PATHS,
+            censor: '[REDACTED]',
+        },
+    };
+}
+
+export function setBaseLogger(logger: PinoLoggerType): void {
     baseLogger = logger;
 }
 
-export function initObservability(config: ObservabilityConfig): pino.Logger {
+/**
+ * Inicializa OTel (OTLP → Alloy) y luego Pino.
+ * Usar `node --require @andes/log/register` para instrumentar antes
+ * de cualquier otro import de la app.
+ */
+export function initObservability(config: ObservabilityConfig): PinoLoggerType {
     if (config.enableOtel !== false) {
         initOtel({
             serviceName: config.serviceName,
@@ -40,53 +94,39 @@ export function initObservability(config: ObservabilityConfig): pino.Logger {
     return initLogger(config);
 }
 
-export function initLogger(config: LoggerConfig): pino.Logger {
-    const logger = pino({
-        name: config.serviceName,
-        level: config.level || process.env.LOG_LEVEL || 'info',
-        base: {
-            'service.name': config.serviceName,
-            'service.instance.id': config.instanceId || process.env.INSTANCE_ID || '1',
-            'deployment.environment': config.environment || process.env.DEPLOYMENT_ENVIRONMENT || 'local',
-            host: process.env.HOSTNAME || 'unknown',
-        },
-        formatters: {
-            level: (label) => ({ level: label }),
-        },
-        redact: {
-            paths: REDACT_PATHS,
-            censor: '[REDACTED]',
-        },
-    });
+export function initLogger(config: LoggerConfig): PinoLoggerType {
+    const pino = loadPino();
+    const logger = pino(buildPinoOptions(config));
     setBaseLogger(logger);
     return logger;
 }
 
-export function httpMiddleware() {
-    return pinoHttp({ logger: getBaseLogger() });
+/**
+ * Access log vía pino-http. Por defecto **no** loguea cada request
+ * (`autoLogging` off) para no duplicar el wide event.
+ * Activar con `LOG_HTTP_ACCESS=true` o `autoLogging: true` en options.
+ */
+export function httpMiddleware(options: Record<string, unknown> = {}) {
+    const mod = loadPinoHttp() as unknown as { default?: typeof import('pino-http'); };
+    const pinoHttp = (mod.default || mod) as typeof import('pino-http');
+    const accessOn = process.env.LOG_HTTP_ACCESS === 'true' || process.env.LOG_HTTP_ACCESS === '1';
+    return (pinoHttp as unknown as (opts: Record<string, unknown>) => unknown)({
+        logger: getBaseLogger(),
+        autoLogging: accessOn,
+        ...options,
+    });
 }
 
-function getBaseLogger(): pino.Logger {
+function getBaseLogger(): PinoLoggerType {
     if (baseLogger) {
         return baseLogger;
     }
-    return pino({
-        name: 'andes-log',
-        level: process.env.LOG_LEVEL || 'info',
-        base: {
-            'service.name': process.env.SERVICE_NAME || 'unknown',
-            'service.instance.id': process.env.INSTANCE_ID || '1',
-            'deployment.environment': process.env.DEPLOYMENT_ENVIRONMENT || 'local',
-            host: process.env.HOSTNAME || 'unknown',
-        },
-        formatters: {
-            level: (label) => ({ level: label }),
-        },
-        redact: {
-            paths: REDACT_PATHS,
-            censor: '[REDACTED]',
-        },
-    });
+    const pino = loadPino();
+    return pino(
+        buildPinoOptions({
+            serviceName: process.env.SERVICE_NAME || 'unknown',
+        })
+    );
 }
 
 export function createLogger(module: string): Logger {
@@ -95,9 +135,9 @@ export function createLogger(module: string): Logger {
 }
 
 export class PinoLogger implements Logger {
-    private logger: pino.Logger;
+    private logger: PinoLoggerType;
 
-    constructor(logger: pino.Logger) {
+    constructor(logger: PinoLoggerType) {
         this.logger = logger;
     }
 
