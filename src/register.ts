@@ -9,6 +9,13 @@
  */
 import { initOtel } from './otel/otel';
 
+if (!process.env.SERVICE_NAME) {
+    process.emitWarning(
+        '[andes/log] register sin SERVICE_NAME: el resource OTLP quedará como "unknown" y no puede cambiarse después. Definir SERVICE_NAME antes de iniciar el proceso.',
+        'AndesLogOtelWarning'
+    );
+}
+
 initOtel({
     serviceName: process.env.SERVICE_NAME || 'unknown',
     instanceId: process.env.INSTANCE_ID,
