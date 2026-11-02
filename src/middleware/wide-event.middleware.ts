@@ -7,8 +7,6 @@ interface WideEvent {
     timestamp: string;
     method: string;
     path: string;
-    'service.instance.id': string;
-    'deployment.environment': string;
     version: string;
     status_code?: number;
     outcome?: 'success' | 'error';
@@ -43,9 +41,7 @@ export function wideEventMiddleware(logger: Logger) {
             timestamp: new Date().toISOString(),
             method: req.method,
             path: req.path,
-            'service.instance.id': process.env.INSTANCE_ID || '1',
-            'deployment.environment': process.env.DEPLOYMENT_ENVIRONMENT || 'local',
-            version: process.env.npm_package_version || 'unknown',
+            version: process.env.APP_VERSION || process.env.npm_package_version || 'unknown',
         };
 
         req.request_id = wideEvent.request_id;

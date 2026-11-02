@@ -1,4 +1,5 @@
 import type { Logger as PinoLoggerType } from 'pino';
+import type { HttpLogger, Options as PinoHttpOptions } from 'pino-http';
 import { context, trace } from '@opentelemetry/api';
 import { Logger } from './logger.interface';
 import { initOtel } from '../otel/otel';
@@ -15,6 +16,7 @@ export interface LoggerConfig {
 export interface ObservabilityConfig extends LoggerConfig {
     otlpEndpoint?: string;
     enableOtel?: boolean;
+    traceSampleRatio?: number;
 }
 
 const REDACT_PATHS = [
@@ -30,7 +32,9 @@ function loadPino(): typeof import('pino') {
     return require('pino');
 }
 
-function loadPinoHttp(): typeof import('pino-http') {
+type PinoHttpFactory = (typeof import('pino-http'))['default'];
+
+function loadPinoHttp(): PinoHttpFactory {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('pino-http');
 }
@@ -89,6 +93,7 @@ export function initObservability(config: ObservabilityConfig): PinoLoggerType {
             instanceId: config.instanceId,
             environment: config.environment,
             endpoint: config.otlpEndpoint,
+            traceSampleRatio: config.traceSampleRatio,
         });
     }
     return initLogger(config);
@@ -106,11 +111,10 @@ export function initLogger(config: LoggerConfig): PinoLoggerType {
  * (`autoLogging` off) para no duplicar el wide event.
  * Activar con `LOG_HTTP_ACCESS=true` o `autoLogging: true` en options.
  */
-export function httpMiddleware(options: Record<string, unknown> = {}) {
-    const mod = loadPinoHttp() as unknown as { default?: typeof import('pino-http'); };
-    const pinoHttp = (mod.default || mod) as typeof import('pino-http');
+export function httpMiddleware(options: PinoHttpOptions = {}): HttpLogger {
+    const pinoHttp = loadPinoHttp();
     const accessOn = process.env.LOG_HTTP_ACCESS === 'true' || process.env.LOG_HTTP_ACCESS === '1';
-    return (pinoHttp as unknown as (opts: Record<string, unknown>) => unknown)({
+    return pinoHttp({
         logger: getBaseLogger(),
         autoLogging: accessOn,
         ...options,
