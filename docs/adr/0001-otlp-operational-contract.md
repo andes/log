@@ -72,9 +72,10 @@ Campos fijos además de resource:
 
 - `action` = `http.request`
 - `request_id`, `method`, `path`, `status_code`, `duration_ms`, `outcome` (`success` \| `error`)
-- `service.instance.id`, `deployment.environment`, `version` (app)
+- `version` (app): `APP_VERSION` con fallback a `npm_package_version`; `unknown` si no está definido
 
 - Usar wide events como access log canónico.
+- No repetir en el wide event atributos que ya emite el resource (`service.name`, `service.instance.id`, `deployment.environment`); Pino los agrega en cada línea.
 - Enriquecer solo con identificadores no sensibles (p. ej. `paciente.id` interno), nunca DNI u otra PHI.
 
 #### 3.4 Auditoría Mongo (contrato mínimo)
@@ -94,17 +95,19 @@ Campos fijos además de resource:
 
 - Inicializar el SDK OTel **antes** del primer `require`/`import` efectivo de `pino`.
 - Usar `node --require @andes/log/register` (o `NODE_OPTIONS`) en el entrypoint.
+- Exigir `SERVICE_NAME` cuando se usa `register`: el resource OTLP se fija en el arranque y un `initObservability({ serviceName })` posterior no puede reemplazarlo. La librería emite un `AndesLogOtelWarning` y conserva el resource original.
 - Hacer `initOtel` idempotente; permitir `initObservability` después del register.
 - Cargar `pino` / `pino-http` de forma diferida tras `sdk.start()`.
 - Incluir mixin vía `@opentelemetry/api` para `trace_id` / `span_id` en cada línea.
 - Redactar headers sensibles: `authorization`, `cookie`, `x-api-key`, `set-cookie`.
+- **Cierre ordenado**: la librería no registra handlers de `SIGTERM` ni llama `process.exit()`. Expone `shutdownOtel()` (flush + shutdown, idempotente) que la aplicación debe invocar en su propio shutdown.
 
 ### 5. Sampling
 
 | Señal | Dónde configurar | Regla |
 |---|---|---|
 | Wide events | Lib: `LOG_SAMPLE_RATE`, `LOG_SLOW_THRESHOLD_MS` | Emitir siempre si `status_code >= 400`, hay `error`, o `duration_ms` supera umbral; si no, samplear con el ratio |
-| Traces | SDK OTel y/o collector | No reutilizar `LOG_SAMPLE_RATE` |
+| Traces | Lib: `OTEL_TRACES_SAMPLER_RATIO` / `traceSampleRatio`; collector | `ParentBased(TraceIdRatioBased)`, default `1` (todas). No reutilizar `LOG_SAMPLE_RATE` |
 | Logs `logInfo` / `logWarn` / `logError` | `LOG_LEVEL` + criterio de aplicación | No aplicar sample aleatorio ciego |
 | Access `pino-http` | `LOG_HTTP_ACCESS` (default off) | Mantener off en prod si el access canónico es el wide event |
 | Auditoría Mongo | — | No samplear |
@@ -135,10 +138,12 @@ Campos fijos además de resource:
 | `LOG_SAMPLE_RATE` | `0.05` | Sample wide events OK |
 | `LOG_SLOW_THRESHOLD_MS` | `1000` | Umbral wide event lento |
 | `LOG_HTTP_ACCESS` | off | Habilitar access pino-http |
+| `OTEL_TRACES_SAMPLER_RATIO` | `1` | Ratio de traces raíz (0-1); `traceSampleRatio` tiene prioridad |
+| `APP_VERSION` | `npm_package_version` \| `unknown` | `version` del wide event |
 
 ## Consecuencias
 
-- Implementar en `@andes/log`: register temprano, require diferido de Pino, mixin de traza, wide event con `action`, access pino-http off por defecto, README alineado a este ADR.
+- Implementado en `@andes/log`: register temprano, require diferido de Pino, mixin de traza, wide event con `action` y sin duplicar resource, access pino-http off por defecto, `shutdownOtel()` exportado, sampler de trazas configurable y `httpMiddleware` tipado como `HttpLogger`.
 - Alinear `andes/observabilidad` (PLAN/README) a este contrato.
 - Validar: request HTTP → traza en Tempo + log en Loki con el mismo `trace_id`; sin duplicados por scrape Docker.
 - Conservar consumidores de auditoría Mongo hasta definir migración o paquete dedicado.

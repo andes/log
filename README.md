@@ -32,9 +32,14 @@ Contrato: [`docs/adr/0001-otlp-operational-contract.md`](./docs/adr/0001-otlp-op
 Inicializar el SDK antes de cargar `pino`:
 
 ```bash
-node --require @andes/log/register dist/server.js
-# o: NODE_OPTIONS='--require @andes/log/register'
+SERVICE_NAME=mi-api node --require @andes/log/register dist/server.js
+# o: SERVICE_NAME=mi-api NODE_OPTIONS='--require @andes/log/register'
 ```
+
+`SERVICE_NAME` es obligatorio con `register`: el resource OTLP se fija en ese momento y no puede
+cambiarse después. Si falta, la librería emite un `AndesLogOtelWarning` y el resource queda como
+`unknown`; si luego se llama `initObservability({ serviceName })`, también advierte y conserva el
+resource original.
 
 En el entrypoint:
 
@@ -54,6 +59,7 @@ Efectos de `initObservability`:
 - Export OTLP HTTP (`/v1/traces`, `/v1/metrics`, `/v1/logs`) hacia Alloy `:4318`
 - Pino con resource attrs OTel + mixin `trace_id` / `span_id`
 - Redacción de headers sensibles
+- Traces con `ParentBased(TraceIdRatioBased)` (`OTEL_TRACES_SAMPLER_RATIO`, default `1`)
 
 ### 2. Logs en servicios
 
@@ -72,6 +78,20 @@ enrichWideEvent(req, res, { paciente: { id: '123' } });
 
 Convenciones: ver ADR §3 (`module`, `action`, labels, wide event, auditoría Mongo).
 
+### 3. Cierre ordenado
+
+La librería no se apropia de `SIGTERM` ni llama `process.exit()`. El flush de OTel se hace
+explícitamente:
+
+```typescript
+import { shutdownOtel } from '@andes/log';
+
+process.on('SIGTERM', async () => {
+    await shutdownOtel();
+    server.close(() => process.exit(0));
+});
+```
+
 ## Variables de entorno
 
 | Variable | Default | Descripción |
@@ -80,10 +100,12 @@ Convenciones: ver ADR §3 (`module`, `action`, labels, wide event, auditoría Mo
 | `LOG_SAMPLE_RATE` | `0.05` | Sample de wide events exitosos (no aplica a traces ni a auditoría) |
 | `LOG_SLOW_THRESHOLD_MS` | `1000` | Umbral de request lento (wide event siempre emitido) |
 | `LOG_HTTP_ACCESS` | off | `true` habilita access log de pino-http |
-| `SERVICE_NAME` | `unknown` | → `service.name` |
+| `SERVICE_NAME` | `unknown` | → `service.name` (obligatorio con `register`) |
 | `INSTANCE_ID` | `1` | → `service.instance.id` |
 | `DEPLOYMENT_ENVIRONMENT` | `local` | → `deployment.environment` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318` | Base OTLP del Alloy central |
+| `OTEL_TRACES_SAMPLER_RATIO` | `1` | Ratio de traces raíz (0-1); `traceSampleRatio` en `initObservability` tiene prioridad |
+| `APP_VERSION` | `npm_package_version` | `version` del wide event (`unknown` si no está definido) |
 
 ## Validación contra el stack
 
