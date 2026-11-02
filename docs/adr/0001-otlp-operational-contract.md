@@ -2,7 +2,7 @@
 
 ## Estado
 
-Propuesto
+Propuesto — contrato `v1`
 
 ## Contexto
 
@@ -46,13 +46,15 @@ Motivo: la coexistencia de scrape stdout y OTLP logs produce líneas duplicadas 
 
 #### 3.1 Resource / labels de baja cardinalidad
 
-| Emisión (OTel resource / Pino) | Label Loki | Notas |
+| Emisión (OTel resource / Pino) | En Loki | Notas |
 |---|---|---|
-| `service.name` | `service_name` | Obligatorio |
-| `deployment.environment` | `deployment_environment` | Valores: `local` \| `test` \| `prod` (u otros acordados) |
-| `level` (string) | `level` | `trace` \| `debug` \| `info` \| `warn` \| `error` \| `fatal` |
+| `service.name` | index label `service_name` | Obligatorio |
+| `deployment.environment` | index label `deployment_environment` | Valores: `local` \| `test` \| `prod` (u otros acordados) |
+| `service.instance.id` | structured metadata `service_instance_id` | No indexar: alta cardinalidad |
+| nivel (severidad OTLP) | structured metadata `level` | En el pipeline Docker es label |
 
 - No promover a label atributos de alta cardinalidad (`request_id`, `pacienteId`, `path` con IDs, etc.).
+- En el path OTLP el nivel se filtra con pipe (`| level="error"`); el selector `{level="error"}` sólo aplica al pipeline Docker.
 - En el pipeline Docker de Alloy (solo cargas sin OTLP), extraer los mismos nombres de campo hacia labels.
 
 #### 3.2 Cuerpo del log operacional
@@ -120,7 +122,11 @@ Campos fijos además de resource:
 
 ### 7. Stack `andes/observabilidad`
 
+Repo: `andes/observabilidad` (central + edge). Guía de integración: `docs/integracion-operacional.md` (contrato `v1`).
+
 - Recibir OTLP en Alloy (`4317` / `4318`) y enrutar logs→Loki, traces→Tempo, metrics→Prometheus.
+- Mantener `service_name` y `deployment_environment` como index labels y `service_instance_id` como structured metadata.
+- Derivar `level` de la severidad del registro en el path OTLP.
 - Documentar en PLAN/README el mismo contrato: operacional = OTLP; auditoría = Mongo.
 - Mantener el pipeline `loki.source.docker` + `obs.enabled=true` solo para servicios **sin** OTLP logs.
 - Alinear datasources Grafana (Loki↔Tempo) con `trace_id` / `service_name`.
@@ -151,4 +157,6 @@ Campos fijos además de resource:
 ## Referencias
 
 - Stack: `andes/observabilidad` — Alloy OTLP, Loki, Tempo, Prometheus
+- Guía de integración del stack: `observabilidad/docs/integracion-operacional.md` (contrato `v1`)
 - Librería: `@andes/log` v4
+- Spec canónico: capability `observability/contract` (`v1`) del workspace `work/openspec`; durante la alineación vive en el change `alineacion-observabilidad-multirepo`

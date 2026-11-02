@@ -15,6 +15,17 @@ Contrato: [`docs/adr/0001-otlp-operational-contract.md`](./docs/adr/0001-otlp-op
 - Usar **solo OTLP** como path de logs operacionales hacia Loki.
 - No habilitar `obs.enabled=true` (scrape stdout) en servicios que ya exportan OTLP logs: la doble ingesta genera líneas duplicadas en Loki.
 
+## Labels en Loki (contrato v1)
+
+| Dato | Path OTLP | Path Docker |
+|---|---|---|
+| `service.name` | label `service_name` | label `service_name` |
+| `deployment.environment` | label `deployment_environment` | label `deployment_environment` |
+| `service.instance.id` | metadata `service_instance_id` | — |
+| nivel | metadata `level` (desde severidad) | label `level` |
+
+En OTLP el nivel se filtra con pipe (`| level="error"`); el selector `{level="error"}` sólo aplica al path Docker. Detalle, checklist de integración y verificación: `observabilidad/docs/integracion-operacional.md`.
+
 ## Instalación
 
 ```json
